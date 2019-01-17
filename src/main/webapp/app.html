@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+	content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+<title>継続的アンケートサイト：継問ホーム</title>
+<meta name="keyword" content="継問,Tsugumon,つぐもん,アンケート"/>
+<meta property="og:title" content="継問ホーム" />
+<meta property="og:description" content="IPアドレスのみで判断のシンプルな継続的アンケートサイト継問のホームです" />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="sambnail.png" />
+<meta property="og:site_name" content="継続的アンケートサイト：継問（つぐもん）" />
+<script src="https://cdn.jsdelivr.net/npm/vue@2.5.16/dist/vue.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+<script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.1/moment.js"></script>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<script src="main.js" async></script>
+<link rel="stylesheet" href="main.css"/>
+</head>
+<body class="container">
+	<header class="row">
+		<h2 id="logo" class="col-xs-6">継問[Tsugumon]<br>αテスト</h2>
+		<p class="col-xs-6">継続的アンケートサイト<br/>現在開発中です。データは永続的には保存されません。</p>
+	</header>
+	<header class="row">
+		<div class="col-xs-12"></div>
+	</header>
+	<hr>
+	<div class="row" id="app">
+		<div class="col-xs-12">
+			<div class="row">
+				<div class="col-xs-12">
+					<div id="ipAddress">IPアドレス:{{user.ipAddress}}; accessed:{{user.accessed}}; available:{{user.available}}</div>
+				</div>
+			</div>
+			<div class="row">
+				<div class="col-xs-12">
+					<ul class="nav nav-tabs">
+						<li class="nav-item active"><a class="nav-link" data-toggle="tab" href="#home">Home</a></li>
+						<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#target-enquete-pane">対象アンケート</a></li>
+						<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#create-enquete-pane">アンケートの作成</a></li>
+						<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#search-pane">アンケートの検索</a></li>
+						<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#ranking-pane">ランキング</a></li>
+						<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#info">情報</a></li>
+					</ul>
+					<div class="tab-content">
+						<div id="home" class="tab-pane active">
+							<div id="dealt-object">
+								<h3>配布されたアンケート</h3>
+								<div v-if="dealtEnquete">
+									<enquete v-bind:enq="dealtEnquete"></enquete>
+								</div>
+							</div>
+							<div id="own-ojbects">
+								<h3>作成したアンケート</h3>
+								<div v-if="ownEnquete">
+									<enquete v-bind:enq="ownEnquete"></enquete>
+									<p><button v-on:click="deleteEnquete">削除</button></p>
+								</div>
+								<h3>回答したアンケート</h3>
+								<div id="answer-enquetes">
+									<ul v-if="answers" class="list-group">
+										<li v-for="a in answers" class="list-group-item" v-bind:id="'enquete'+a.enquete.id">
+											<enquete v-bind:enq="a.enquete"></enquete>
+											<p>選択値：{{a.entry}}</p>
+											<p><button v-on:click="deleteAnswer(a.enquete.id)">削除</button></p>
+										</li>
+									</ul>
+								</div>
+							</div>
+						</div>
+						<div id="target-enquete-pane" class="tab-pane">
+							<div v-if="targetEnquete">
+								<div class="enquete">
+									<p></p>
+									<p>{{targetEnquete.description}}</p>
+									<ol>
+										<li v-for="e in targetEnquete.entries"><input name="selected" type="radio" v-model="entry" v-bind:value="e.number"><span>{{e.string}}</span><span v-if="e.quantity">{{e.quantity}}</span></li>
+									</ol>
+								</div>
+								<button v-on:click="sendAnswer(targetEnquete.id)">送信</button>
+							</div>
+						</div>
+						<div id="create-enquete-pane" class="tab-pane">
+							<h3>本文</h3>
+							<textarea cols="40" rows="10" v-model="enquete.description"></textarea>
+							<h3>選択候補</h3>
+							<ol id="input-entries">
+								<li v-for="entry,index in enquete.entries"><input type="text" required="required" v-model="enquete.entries[index].string"/></li>
+							</ol>
+							<p>候補は２個以上にしてください。また空白にはしないでください。</p>
+							<div><button v-on:click="plusEntry">+</button> <button v-on:click="minusEntry">-</button></div>
+							<div><button v-on:click="sendEnquete">送る</button></div>
+						</div>
+						<div id="search-pane" class="tab-pane">
+							<h3>簡易検索</h3>
+							<div>
+								<input type="text" v-model="search.keyword" />
+								<button v-on:click="dosearch(0)" type="button">検索</button>
+							</div>
+							<ul v-if="search.enquetes" class="list-group">
+								<li v-for="enquete in search.enquetes" class="list-group-item">
+									<enquete v-bind:enq="enquete"></enquete>
+								</li>
+							</ul>
+							<button v-if="search.page > 0" v-on:click="dosearch(search.page - 1)">prev</button> : <span>{{search.page}}</span> : <button v-on:click="dosearch(search.page + 1)">next</button>
+						</div>
+						<div id="ranking-pane" class="tab-pane">
+							<h3>ランキング</h3>
+							<p><button v-on:click="getRanking(0);">取得</button></p>
+							<ul v-if="ranking.enquetes" class="list-group">
+								<li v-for="enquete in ranking.enquetes" class="list-group-item">
+									<enquete v-bind:enq="enquete"></enquete>
+								</li>
+							</ul>
+							<button v-if="ranking.page > 0" v-on:click="getRanking(ranking.page - 1)">prev</button> : <span>{{ranking.page}}</span> : <button v-on:click="getRanking(ranking.page + 1)">next</button>
+						</div>
+						<div id="info" class="tab-pane">
+							<div class="col-xs-12 col-md-6">time:</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<hr>
+	<footer class="row">
+		<div class="col-xs-6">
+			<p>作者情報</p>
+			<ul class="list-group">
+				<li class="list-group-item"><a href="https://about.me/inomoto.hironobu">about.me</a></li>
+				<li class="list-group-item"><a href="mailto:inmthrnb@gmail.com">E-mail</a></li>
+			</ul>
+		</div>
+		<div class="col-xs-6">
+			<p>サイトページ</p>
+			<ul class="list-group">
+				<li class="list-group-item"><a href="index.html">初めに</a></li>
+				<li class="list-group-item"><a href="faq.html">FAQ</a></li>
+				<li class="list-group-item"><a href="desc.html">解説</a></li>
+				<li class="list-group-item"><a href="policy.html">プライバシーポリシー</a></li>
+				<li class="list-group-item"><a href="terms.html">利用規約</a></li>
+			</ul>
+		</div>
+		<div class="col-xs-12 row">
+			<div class="col-xs-4"></div><p class="col-xs-4">ver 0.5.0</p><div class="col-xs-4"></div>
+		</div>
+	</footer>
+</body>
+</html>

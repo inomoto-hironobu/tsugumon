@@ -1,0 +1,5 @@
+target/
+.metadata/
+.settings/
+/.apt_generated/
+*~

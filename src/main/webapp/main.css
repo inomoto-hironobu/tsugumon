@@ -1,0 +1,10 @@
+.enquete {
+	border: dotted 1px blue;
+}
+table {
+	border: solid 1px black;
+	border-collapse: collapse;
+}
+td {
+	border: solid 1px black;
+}

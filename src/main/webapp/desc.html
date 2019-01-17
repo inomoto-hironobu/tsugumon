@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+	content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+<title>継問詳細</title>
+<meta name="keyword" content="継問,Tsugumon,つぐもん,アンケート"/>
+<meta property="og:title" content="継問の解説" />
+<meta property="og:description" content="継問の解説です" />
+<meta property="og:type" content="article" />
+<meta property="og:image" content="sambnail.png" />
+<meta property="og:site_name" content="継続的アンケートサイト：継問（つぐもん）" />
+<script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+<link async="async" rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
+<script async="async" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+<link rel="stylesheet" href="main.css"/>
+</head>
+<body class="container">
+	<header class="row">
+		<h2 id="logo" class="col-xs-6">継問　αテスト</h2>
+		<p class="col-xs-6"><a href="app.html">ホーム</a></p>
+	</header>
+	<main class="row">
+		<div class="col-xs-12">
+			<h3>使い方</h3>
+			<p>基本的な使い方としてはアンケートを作成することとアンケートに答えることです。一定の条件を満たせばアンケートの結果を見ることができるのが特徴です。</p>
+			<h3>フロントアプリ</h3>
+			<p>アンケートをクリックするとアンケートの詳細をダウンロードして選択アンケート画面で表示します。</p>
+			<h3>仕様-サーバーアプリ</h3>
+			<p>一つのIPアドレスにつき一つのアンケートを作成できます。</p>
+			<p>一つのIPアドレスにつき１つの強制的に配布されたアンケートと10つの選んだアンケートに投票できます。</p>
+			<p>投票結果を見るには有効ユーザーである必要があります。</p>
+			<p>有効ユーザーとは管理者側から任意に配布されたアンケートとユーザー側から任意に選んだアンケートを10個の計11の回答を行っているユーザーの事です。</p>
+			<h3>REST API</h3>
+			<p>/api/からのURLでRESTを表現する。</p>
+			<table>
+				<tr><td>home<br>GET</td><td>投稿したアンケートと投票を返す</td></tr>
+				<tr><td>user<br>GET</td><td>ユーザーの基本的な情報を返す</td>
+				<tr><td>enquete/{enquete}<br>GET</td><td>{enquete}で指定したアンケートを返す。なければ404</td></tr>					
+				<tr><td>enquete<br>POST</td><td>アンケートを投稿する。</td></tr>
+				<tr><td>enquete<br>DELETE</td><td>投稿したアンケートを削除する</td></tr>
+				<tr><td>answer/{enquete}<br>DELETE</td><td>指定したアンケートの投票を削除する。指定したアンケートがなければ404</td></tr>
+				<tr><td>answer/{enquete}/{entry}<br>PUT</td><td>指定したアンケートに投票する</td></tr>
+				<tr><td>search/{keyword}/{page}<br>GET</td><td>キーワードから検索する</td></tr>
+				<tr></tr>
+				<tr><td></td></tr>
+			</table>
+		</div>
+	</main>
+</body>
+</html>
