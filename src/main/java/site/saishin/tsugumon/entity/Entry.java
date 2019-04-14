@@ -2,18 +2,21 @@ package site.saishin.tsugumon.entity;
 
 import java.io.Serializable;
 
-import org.seasar.doma.Entity;
-import org.seasar.doma.Id;
-import org.seasar.doma.Table;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.UniqueConstraint;
 
 @Entity
-@Table(name="Entries")
+@Table(name="Entries", uniqueConstraints = @UniqueConstraint(columnNames = {"enquete_id", "number"}))
 public class Entry implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 	@Id
+	@GeneratedValue
+	public Long id;
 	public Long enquete_id;
-	@Id
 	public Integer number;
 	public String string;
 

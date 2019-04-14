@@ -47,9 +47,6 @@ import site.saishin.tsugumon.util.AccessManager;
 
 public class TsugumonResourceTest {
 
-	@Rule
-    public final DbResource dbResource = new DbResource();
-
 	@BeforeClass
 	public static void setUpBeforeClass() throws Exception {
 	}
@@ -71,15 +68,6 @@ public class TsugumonResourceTest {
 			private Set<String> getAccessUsers() {
 				return accessUsers;
 			}
-			@Provides
-			private TsugumonLogic tsugumonLogic() throws IOException {
-				MemcachedClient mclient = new MemcachedClient(new InetSocketAddress("127.0.0.1", 11211));
-				return new TsugumonLogic(new HashSet<String>(), getAppConfig(),mclient);
-			}
-			@Provides
-			private AppConfig getAppConfig() {
-				return dbResource.getAppConfig();
-			}
 		});
 		tsugumonResource = injector.getInstance(TsugumonResource.class);
 	}
@@ -97,8 +85,10 @@ public class TsugumonResourceTest {
 
 		HttpServletRequest existreq = Mockito.mock(HttpServletRequest.class);
 		Mockito.when(existreq.getRemoteAddr()).thenReturn(ConstantsForTest.existIpAddr);
+		
 		HttpServletRequest newreq = Mockito.mock(HttpServletRequest.class);
 		Mockito.when(newreq.getRemoteAddr()).thenReturn("127.0.0.1");
+		
 		Response resp = tsugumonResource.getHome(existreq);
 		assertThat(resp.getStatus(), is(Response.Status.OK.getStatusCode()));
 		Object entity = resp.getEntity();
@@ -108,8 +98,10 @@ public class TsugumonResourceTest {
 		} else {
 			fail();
 		}
+		
 		resp = tsugumonResource.getDealtEnquete(existreq);
 		assertThat(resp.getStatus(), is(Response.Status.OK.getStatusCode()));
+		
 		resp = tsugumonResource.getRanking(existreq, 0);
 		assertThat(resp.getStatus(), notNullValue());
 		entity = resp.getEntity();
@@ -123,6 +115,7 @@ public class TsugumonResourceTest {
 		} else {
 			fail();
 		}
+		
 		String source = "{\"description\":\"test\",\"entries\":[{\"string\":\"test\",\"number\":1},{\"string\":\"test\",\"number\":2}]}";
 		resp = tsugumonResource.createEnquete(existreq, IOUtils.toInputStream(source, Charset.forName("UTF-8")));
 		assertThat(resp.getStatus(), is(Response.Status.CONFLICT.getStatusCode()));

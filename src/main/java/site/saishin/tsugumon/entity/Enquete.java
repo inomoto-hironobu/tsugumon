@@ -3,11 +3,13 @@ package site.saishin.tsugumon.entity;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
-import org.seasar.doma.Entity;
-import org.seasar.doma.GeneratedValue;
-import org.seasar.doma.GenerationType;
-import org.seasar.doma.Id;
-import org.seasar.doma.Table;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
+import javax.persistence.Table;
 
 /**
  *
@@ -15,8 +17,12 @@ import org.seasar.doma.Table;
  */
 @Entity
 @Table(name="Enquetes")
+@NamedQueries({
+	@NamedQuery(name = Enquete.BY_USER, query = "select e from Enquete e where e.user_id = ?1")
+})
 public class Enquete implements Serializable {
 	private static final long serialVersionUID = -8775731913448253476L;
+	public static final String BY_USER = "Enquete.byUser";
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;

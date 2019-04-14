@@ -3,9 +3,10 @@ package site.saishin.tsugumon;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-public class TsugumonConstants {
-	public static final String ACCESS_MANAGER_NAME = "access_manager";
+public final class TsugumonConstants {
 	private TsugumonConstants() {}
+	
+	public static final String ACCESS_MANAGER_NAME = "access_manager";
 	public static final int MAX_SELECT_ANSWER_SIZE = 10;
 	public static final int MAX_DESCRIPTION_SIZE = 500;
 	public static final int MAX_ENTRY_STRING_SIZE = 50;
@@ -35,10 +36,8 @@ public class TsugumonConstants {
 	public static final Response CONFLICT_RESPONSE = Response.status(Status.CONFLICT).build();
 
 	public static final String BASE_DATA_INFO_NAME = "basedatainfo";
-	public static final String AVAILABLE_USERS = "AVAILABLE_USERS";
 	public static final String LOGIC_NAME = "ENQUETE_RESOURCE";
 	public static final String MEMCACHE_CLIENT = "MEMCACHE_CLIENT";
 	public static final String DATA_ACCESSOR_NAME = "DATA_ACCESSOR";
-	public static final String APP_CONFIG_NAME = "APP_CONFIG";
 	public static final String ACCESS_USERS = "";
 }

@@ -16,24 +16,22 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.persistence.Persistence;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Rule;
 import org.junit.Test;
 
 import net.spy.memcached.MemcachedClient;
-import site.saishin.tsugumon.dao.DbResource;
 import site.saishin.tsugumon.entity.User;
 import site.saishin.tsugumon.model.EnqueteModel;
 import site.saishin.tsugumon.model.HomeModel;
 import site.saishin.tsugumon.model.UserModel;
 
 public class LogicTest {
-	@Rule
-	public final DbResource dbResource = new DbResource();
+	
 	TsugumonLogic logic;
 	Set<String> availableUsers;
 	MemcachedClient mclient;
@@ -41,15 +39,28 @@ public class LogicTest {
 	public void setUp() throws IOException {
 		availableUsers = new HashSet<String>();
 		mclient = new MemcachedClient(new InetSocketAddress("127.0.0.1", 11211));
-		logic = new TsugumonLogic(availableUsers, dbResource.getAppConfig(), mclient);
+		logic = new TsugumonLogic(availableUsers, mclient);
+		logic.em = Persistence.createEntityManagerFactory("test").createEntityManager();
 		mclient.flush();
 	}
 
 	@After
 	public void tearDown() {
-
+		logic.em.close();
+		mclient.shutdown();
+		availableUsers.clear();
 	}
 
+	@Test
+	public void test2() {
+		
+		Optional<Response> result = logic.asValidUser("test", (s) -> {
+			s.id;
+			
+			return null;
+		});
+		assertTrue(result.isPresent());
+	}
 	void assertEnquete(EnqueteModel em) {
 		assertTrue(em.getDescription() != null);
 	}
@@ -156,5 +167,9 @@ public class LogicTest {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	@Test
+	public void testSendEnquete() {
+		
 	}
 }

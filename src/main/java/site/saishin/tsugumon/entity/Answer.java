@@ -3,17 +3,23 @@ package site.saishin.tsugumon.entity;
 import java.io.Serializable;
 import java.sql.Timestamp;
 
-import org.seasar.doma.Entity;
-import org.seasar.doma.Id;
-import org.seasar.doma.Table;
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
+import javax.persistence.Table;
 
 @Entity
 @Table(name="Answers")
+@NamedQueries({
+	@NamedQuery(name = Answer.COUNT,query="")
+})
 public class Answer implements Serializable {
 	private static final long serialVersionUID = -2705922864124905350L;
+	public static final String COUNT = "Answer.count";
 	@Id
+	public Long id;
 	public Long user_id;
-	@Id
 	public Long enquete_id;
 	public Integer entry;
 	public Timestamp created;

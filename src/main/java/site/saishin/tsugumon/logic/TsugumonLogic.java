@@ -13,6 +13,10 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.lang3.StringUtils;
@@ -50,25 +54,16 @@ import site.saishin.tsugumon.model.UserModel;
 public class TsugumonLogic {
 
 	private static final Logger logger = LoggerFactory.getLogger(TsugumonLogic.class);
+	@PersistenceContext
+	EntityManager em;
 	// 許可ユーザ
 	private Set<String> availableUsers;
-	private AppConfig appConfig;
-	private final AnswerDao answerDao;
-	private final EnqueteDao enqueteDao;
-	private final EntryDao entryDao;
-	private final UserDao userDao;
-	private final DealtEnqueteDao dealtEnqueteDao;
 	private MemcachedClient mclient;;
 	ObjectMapper mapper = new ObjectMapper();
 
-	public TsugumonLogic(Set<String> availableUsers, AppConfig appConfig, MemcachedClient mclient) {
+	public TsugumonLogic(Set<String> availableUsers, MemcachedClient mclient) {
 		this.availableUsers = availableUsers;
-		this.appConfig = appConfig;
-		answerDao = new AnswerDaoImpl(appConfig);
-		enqueteDao = new EnqueteDaoImpl(appConfig);
-		entryDao = new EntryDaoImpl(appConfig);
-		userDao = new UserDaoImpl(appConfig);
-		dealtEnqueteDao = new DealtEnqueteDaoImpl(appConfig);
+
 		this.mclient = mclient;
 		logger.info("inited");
 	}
@@ -167,7 +162,9 @@ public class TsugumonLogic {
 
 	public List<EnqueteModel> searchWithTransaction(final String keyword, final int page) {
 		return withTransaction(() -> {
-			List<EnqueteModel> enqueteModels = enqueteDao.search(keyword, TsugumonConstants.MAX_PAGE_SIZE, TsugumonConstants.MAX_PAGE_SIZE * 0).stream().map((e) -> {
+			TypedQuery<Enquete> q = em.createNamedQuery("", Enquete.class);
+			
+			List<EnqueteModel> enqueteModels = q.getResultList().stream().map((e) -> {
 				EnqueteModel em = new EnqueteModel(e);
 				return em;
 			}).collect(Collectors.toList());
@@ -179,7 +176,7 @@ public class TsugumonLogic {
 		return withTransaction(() -> {
 			List<EnqueteModel> cacheenquetes = (List<EnqueteModel>) mclient.get("ranking/" + page);
 			if (cacheenquetes == null) {
-				List<Enquete> enquetes2 = enqueteDao.ranking(TsugumonConstants.MAX_PAGE_SIZE, TsugumonConstants.MAX_PAGE_SIZE * page);
+				List<Enquete> enquetes2 = em.createQuery("", Enquete.class).getResultList();
 				if (!enquetes2.isEmpty()) {
 					List<EnqueteModel> enqmodels = new ArrayList<>();
 					for(Enquete e :enquetes2) {
@@ -198,7 +195,7 @@ public class TsugumonLogic {
 
 	public Optional<Response> createEnquete(String addr, ByteBuffer buffer) {
 		return asValidUser(addr, (user) -> {
-			if(enqueteDao.selectByUserId(user.id) == null) {
+			if(em.find(Enquete.class, user.id) == null) {
 				EnqueteModel enqueteModel;
 				try {
 					enqueteModel = mapper.readValue(Charset.forName("UTF-8").decode(buffer).toString(), EnqueteModel.class);
@@ -217,8 +214,8 @@ public class TsugumonLogic {
 						enquete.description = enqueteModel.getDescription();
 						enquete.user_id = user.id;
 						enquete.language_id = 1;
-						enqueteDao.insert(enquete);
-						Enquete newEnquete = enqueteDao.selectByUserId(enquete.user_id);
+						em.persist(enquete);
+						Enquete newEnquete = em.find(Enquete.class, enquete.user_id);
 						List<Entry> entries = enqueteModel.getEntries().stream().map((e) -> {
 							Entry entry = new Entry();
 							entry.number = e.getNumber();
@@ -229,7 +226,7 @@ public class TsugumonLogic {
 						//
 
 						for (Entry entry : entries) {
-							entryDao.insert(entry);
+							em.persist(entry);
 						}
 						//
 						mclient.set("enquete" + enquete.id, TsugumonConstants.MIDDLE_EXPIRATION, newEnquete);
@@ -260,7 +257,7 @@ public class TsugumonLogic {
 					Answer answer = o.get();
 					int oldEntry = answer.entry;
 					answer.entry = entry;
-					answerDao.update(answer);
+					em.persist(answer);
 					return Optional.empty();
 				} else if (size < TsugumonConstants.MAX_SELECT_ANSWER_SIZE + 1) {
 					//
@@ -269,15 +266,15 @@ public class TsugumonLogic {
 					answer.user_id = user.id;
 					answer.enquete_id = enqueteId;
 					answer.created = new Timestamp(System.currentTimeMillis());
-					answerDao.insert(answer);
-					Enquete enquete = enqueteDao.selectById(answer.enquete_id);
+					em.persist(answer);
+					Enquete enquete = em.find(Enquete.class, answer.enquete_id);
 					System.out.println(enquete + " " + answer.enquete_id);
 					if (enquete.total == null) {
 						enquete.total = 0;
 					} else {
 						enquete.total += 1;
 					}
-					enqueteDao.updateTotal(enquete);
+					em.persist(enquete);
 					answers.add(answer);
 					return Optional.empty();
 
@@ -303,9 +300,12 @@ public class TsugumonLogic {
 			Optional<Enquete> ret = getEnqueteByUser(user);
 			if (ret.isPresent()) {
 				Enquete enquete = ret.get();
-				answerDao.deleteByEnquete(enquete);
+				TypedQuery<Answer> q = em.createNamedQuery("", Answer.class);
+				q.setParameter("", enquete.id);
+				q.executeUpdate();
 				mclient.delete("enquete/" + enquete.id);
-				enqueteDao.delete(enquete);
+				TypedQuery<Enquete> q2 = em.createNamedQuery("", Enquete.class);
+				q2.setParameter("id", enquete.id);
 				return Optional.empty();
 			} else {
 				return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
@@ -328,13 +328,12 @@ public class TsugumonLogic {
 					if(answerDao.delete(answer) != 1) {
 						System.out.println("error");
 					}
-					Enquete enquete = enqueteDao.selectById(answer.enquete_id);
+					Enquete enquete = em.find(Enquete.class, answer.enquete_id);
 					if (enquete.total == null) {
 						enquete.total = 0;
 					} else {
 						enquete.total -= 1;
 					}
-					enqueteDao.updateTotal(enquete);
 					answers.remove(answer);
 					mclient.set("answers/"+enqueteId, TsugumonConstants.MIDDLE_EXPIRATION, answers);
 					removed = true;
@@ -352,10 +351,12 @@ public class TsugumonLogic {
 		});
 	}
 
-	private Optional<User> getUserByIpAddress(String addr) {
+	public Optional<User> getUserByIpAddress(String addr) {
 		User user = (User) mclient.get("useraddr/" + addr);
 		if (user == null) {
-			user = userDao.selectByIpAddress(addr);
+			TypedQuery<User> q = em.createNamedQuery(User.BY_ADDR, User.class);
+			q.setParameter(1, addr);
+			user = q.getSingleResult();
 			if (user != null) {
 				mclient.set("useraddr/", TsugumonConstants.SHORT_EXPIRATION, user);
 				return Optional.of(user);
@@ -369,6 +370,7 @@ public class TsugumonLogic {
 	int countByEnqueteAndEntry(Long id, int index) {
 		Integer count = (Integer) mclient.get("count/" + id + "/" + index);
 		if (count == null) {
+			em.createNamedQuery(Answer.COUNT, Answer.class);
 			count = answerDao.countByEnqueteAndEntry(id, index);
 			if (count != null) {
 				mclient.set("count/" + id + "/" + index, TsugumonConstants.SHORT_EXPIRATION, count);
@@ -378,12 +380,13 @@ public class TsugumonLogic {
 		return count;
 	}
 
-	@SuppressWarnings("unchecked")
 	List<Answer> getAnswers(User user) {
 		Object obj = mclient.get("answers/" + user.id);
 		List<Answer> answers = null;
 		if (obj == null) {
-			answers = answerDao.selectByUser(user.id);
+			TypedQuery<Answer> q = em.createNamedQuery("", Answer.class);
+			q.setParameter("", user.id);
+			answers = q.getResultList();
 			if (answers != null) {
 				mclient.set("answers/" + user.id, TsugumonConstants.SHORT_EXPIRATION, answers);
 				return answers;
@@ -391,7 +394,7 @@ public class TsugumonLogic {
 		} else {
 			return (List<Answer>) obj;
 		}
-		answers = Collections.EMPTY_LIST;
+		answers = Collections.emptyList();
 		return answers;
 	}
 
@@ -432,7 +435,9 @@ public class TsugumonLogic {
 		@SuppressWarnings("unchecked")
 		List<Entry> entries = (List<Entry>) mclient.get("entries/" + enquete.id);
 		if (entries == null) {
-			entries = entryDao.selectByEnquetId(enquete.id);
+			TypedQuery<Entry> q = em.createNamedQuery("", Entry.class);
+			q.setParameter("", enquete.id);
+			entries = q.getResultList();
 			if (!entries.isEmpty()) {
 				mclient.set("entries/" + enquete.id, TsugumonConstants.MIDDLE_EXPIRATION, entries);
 			}
@@ -443,7 +448,9 @@ public class TsugumonLogic {
 	Optional<Enquete> getEnqueteByUser(User user) {
 		Enquete enquete = (Enquete) mclient.get("enqueteOf/" + user.id);
 		if (enquete == null) {
-			enquete = enqueteDao.selectByUserId(user.id);
+			TypedQuery<Enquete> q = em.createNamedQuery(Enquete.BY_USER, Enquete.class);
+			q.setParameter("",user.id);
+			enquete = q.getSingleResult();
 			if (enquete != null) {
 				mclient.set("enqueteOf/", TsugumonConstants.SHORT_EXPIRATION, enquete);
 				return Optional.of(enquete);
@@ -457,7 +464,7 @@ public class TsugumonLogic {
 	Optional<Enquete> getEnqueteById(Long id) {
 		Enquete enquete = (Enquete) mclient.get("enquete/" + id);
 		if (enquete == null) {
-			enquete = enqueteDao.selectById(id);
+			enquete = em.find(Enquete.class, id);
 			if (enquete != null) {
 				mclient.set("enquete/" + id, TsugumonConstants.SHORT_EXPIRATION, enquete);
 				return Optional.of(enquete);
@@ -512,15 +519,12 @@ public class TsugumonLogic {
 	}
 
 	<RESULT> RESULT withTransaction(Supplier<RESULT> s) {
-		TransactionManager tx = appConfig.getTransactionManager();
-		return tx.required(()->{
-			return s.get();
-		});
+		return s.get();
 	}
 
 	private long insertUser(User user) {
-		userDao.insert(user);
-		return userDao.selectLast();
+		em.persist(user);
+		return em.find(User.class, user).id;
 	}
 
 	/**
@@ -528,27 +532,22 @@ public class TsugumonLogic {
 	 */
 	Optional<Response> asValidUser(String addr, Function<User, Optional<Response>> func) {
 		logger.debug("asValidUser;" + addr);
-		TransactionManager tx = appConfig.getTransactionManager();
-		User usertmp1 = tx.required(() -> {
-
-			User user = getUserByIpAddress(addr).orElseGet(() -> {
-				final User usertmp2 = new User(addr);
-				logger.info("user created. ipaddr:" + usertmp2.ipAddress);
-				return userDao.selectById(insertUser(usertmp2));
-			});
-			return user;
-		});
-		return tx.required(() -> {
-			logger.debug("user info :" + usertmp1.ipAddress);
-			try {
-				Optional<Response> ret = func.apply(usertmp1);
-				return ret;
-			} catch (Exception e) {
-				logger.error(e.getMessage(), e);
-				return Optional.of(TsugumonConstants.BAD_REQUEST_RESPONSE);
-			}
+		em.getTransaction().begin();
+		User user = getUserByIpAddress(addr).orElseGet(() -> {
+			final User usertmp2 = new User(addr);
+			logger.info("user created. ipaddr:" + usertmp2.ipAddress);
+			return null;
 		});
 
+		User usertmp1;
+		logger.debug("user info :" + usertmp1.ipAddress);
+		try {
+			Optional<Response> ret = func.apply(usertmp1);
+			return ret;
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			return Optional.of(TsugumonConstants.BAD_REQUEST_RESPONSE);
+		}
 	}
 
 }

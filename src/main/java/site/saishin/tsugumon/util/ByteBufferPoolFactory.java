@@ -8,7 +8,7 @@ import org.apache.commons.pool2.impl.DefaultPooledObject;
 
 import site.saishin.tsugumon.TsugumonConstants;
 
-public class ByteBufferPool extends BasePooledObjectFactory<ByteBuffer> {
+public class ByteBufferPoolFactory extends BasePooledObjectFactory<ByteBuffer> {
 
 	@Override
 	public ByteBuffer create() throws Exception {

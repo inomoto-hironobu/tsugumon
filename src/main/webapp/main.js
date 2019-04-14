@@ -1,7 +1,12 @@
 function errorAlert(d) {
 	
 }
-
+$.ajax({
+	url:"enquete.xml",
+	success: function(xml) {
+		console.debug(xml);
+	}
+});
 var app;
 Vue.config.devtools = true;
 Vue.component('enquete', {

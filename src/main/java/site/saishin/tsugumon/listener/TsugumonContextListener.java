@@ -12,9 +12,6 @@ import java.util.concurrent.TimeUnit;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
-import org.seasar.doma.jdbc.dialect.Dialect;
-import org.seasar.doma.jdbc.dialect.MysqlDialect;
-import org.seasar.doma.jdbc.tx.LocalTransactionDataSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.bridge.SLF4JBridgeHandler;
@@ -22,19 +19,9 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.google.inject.Provides;
-import com.google.inject.Singleton;
 
 import net.spy.memcached.MemcachedClient;
 import site.saishin.tsugumon.TsugumonConstants;
-import site.saishin.tsugumon.dao.AnswerDao;
-import site.saishin.tsugumon.dao.AnswerDaoImpl;
-import site.saishin.tsugumon.dao.EnqueteDao;
-import site.saishin.tsugumon.dao.EnqueteDaoImpl;
-import site.saishin.tsugumon.dao.UserDao;
-import site.saishin.tsugumon.dao.UserDaoImpl;
-import site.saishin.tsugumon.dao.setting.AppConfig;
-import site.saishin.tsugumon.logic.TsugumonLogic;
 import site.saishin.tsugumon.util.AccessManager;
 import site.saishin.tsugumon.util.BaseDataInfo;
 import site.saishin.tsugumon.util.BaseDataInfo.Builder;
@@ -61,17 +48,7 @@ public class TsugumonContextListener implements ServletContextListener {
 
 			@Override
 			protected void configure() {
-				bind(AppConfig.class).in(Singleton.class);
-			}
-
-			@Provides
-			private LocalTransactionDataSource getDataSource() {
-				return new LocalTransactionDataSource("jdbc:mysql://localhost/tsugumon?useUnicode=true&characterEncoding=utf8", "root", "7)UxXkQT");
-			}
-
-			@Provides
-			private Dialect getDialect() {
-				return new MysqlDialect();
+				
 			}
 		});
 		MemcachedClient mclient = null;
@@ -80,10 +57,7 @@ public class TsugumonContextListener implements ServletContextListener {
 		} catch (IOException e) {
 			logger.error(e.getMessage(), e);
 		}
-		AppConfig appConfig = injector.getInstance(AppConfig.class);
-		EnqueteDao enqueteDao = new EnqueteDaoImpl(appConfig);
-		UserDao userDao = new UserDaoImpl(appConfig);
-		AnswerDao answerDao = new AnswerDaoImpl(appConfig);
+
 		AccessManager accessManager = new AccessManager();
 		Timer timer = new Timer();
 		Set<String> availableUsers = new HashSet<>();
@@ -93,16 +67,7 @@ public class TsugumonContextListener implements ServletContextListener {
 		longCycleScheduler.scheduleAtFixedRate(()->{
 			timer.setLongCycle(Instant.now());
 			Builder builder = new BaseDataInfo.Builder();
-			appConfig.getTransactionManager().required(()->{
-				event
-				.getServletContext()
-				.setAttribute(TsugumonConstants.BASE_DATA_INFO_NAME, builder
-					.totalUser(userDao.count())
-					.totalEnquete(enqueteDao.count())
-					.totalAnswer(answerDao.count())
-					.build());
-				
-			});
+			
 			accessManager.clearLong();
 		}, 0, TsugumonConstants.LONG_CYCLE_MINUTES, TimeUnit.MINUTES);
 		//
@@ -122,10 +87,8 @@ public class TsugumonContextListener implements ServletContextListener {
 		}, TsugumonConstants.SHORT_CYCLE_MINUTES, TsugumonConstants.SHORT_CYCLE_MINUTES, TimeUnit.MINUTES);
 
 		event.getServletContext().setAttribute("timer", timer);
-		event.getServletContext().setAttribute(TsugumonConstants.LOGIC_NAME,
-				new TsugumonLogic(availableUsers, appConfig, mclient));
+
 		event.getServletContext().setAttribute(TsugumonConstants.ACCESS_MANAGER_NAME, accessManager);
-		event.getServletContext().setAttribute(TsugumonConstants.APP_CONFIG_NAME, appConfig);
 	}
 
 	public void contextDestroyed(ServletContextEvent event) {

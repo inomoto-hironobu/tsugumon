@@ -32,9 +32,9 @@ public class ByteBufferPoolTest {
 
 	@Test
 	public void test() {
-		ByteBufferPool bbpool = new ByteBufferPool();
+		ByteBufferPoolFactory bbpool = new ByteBufferPoolFactory();
 
-		ObjectPool<ByteBuffer> bufferPool = new GenericObjectPool<>(new ByteBufferPool());
+		ObjectPool<ByteBuffer> bufferPool = new GenericObjectPool<>(new ByteBufferPoolFactory());
 		try {
 			;
 			System.out.println(bufferPool.getNumIdle());

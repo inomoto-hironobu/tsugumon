@@ -2,8 +2,8 @@ package site.saishin.tsugumon.entity;
 
 import java.io.Serializable;
 
-import org.seasar.doma.Entity;
-import org.seasar.doma.Id;
+import javax.persistence.Entity;
+import javax.persistence.Id;
 
 @Entity
 public class DealtEnquete implements Serializable {

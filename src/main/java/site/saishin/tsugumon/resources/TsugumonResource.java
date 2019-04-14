@@ -8,12 +8,14 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
 import javax.inject.Singleton;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.FormParam;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
@@ -38,7 +40,7 @@ import site.saishin.tsugumon.model.HomeModel;
 import site.saishin.tsugumon.model.UserModel;
 import site.saishin.tsugumon.util.AccessManager;
 import site.saishin.tsugumon.util.AccessManager.Strategy;
-import site.saishin.tsugumon.util.ByteBufferPool;
+import site.saishin.tsugumon.util.ByteBufferPoolFactory;
 
 @Singleton
 @Path("/")
@@ -52,7 +54,7 @@ public class TsugumonResource {
 	private TsugumonLogic logic;
 	@Inject
 	private AccessManager accessManager;
-	private ObjectPool<ByteBuffer> bufferPool = new GenericObjectPool<>(new ByteBufferPool());
+	private ObjectPool<ByteBuffer> bufferPool = new GenericObjectPool<>(new ByteBufferPoolFactory());
 	public TsugumonResource() {
 		logger.info("construct");
 	}
@@ -66,6 +68,10 @@ public class TsugumonResource {
 		bufferPool.addObject();
 	}
 
+	@PreDestroy
+	public void pd() {
+		
+	}
 	@GET
 	@Path("ipaddress")
 	@Produces(MediaType.TEXT_PLAIN)
@@ -211,13 +217,13 @@ public class TsugumonResource {
 	}
 
 	@PUT
-	@Path("answer/{enqueteId}/{entry:[1-4]}")
-	@Consumes(MediaType.APPLICATION_JSON)
+	@Path("answer")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response putAnswer(@Context final HttpServletRequest req, @PathParam("enqueteId") long enqueteId,
-			@PathParam("entry") int entry) {
+	public Response putAnswer(@Context final HttpServletRequest req, @FormParam("enqueteId") final long enqueteId,
+			@FormParam("entry") int entry) {
 		return atChange(req, ()-> {
 			logger.debug("enquete:" + enqueteId + "; entry:" + entry);
+			
 			return logic.putAnswer(req.getRemoteAddr(), enqueteId, entry).orElse(TsugumonConstants.OK_RESPONSE);
 		});
 	}
