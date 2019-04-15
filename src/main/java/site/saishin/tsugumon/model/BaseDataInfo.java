@@ -1,11 +1,20 @@
-package site.saishin.tsugumon.util;
+package site.saishin.tsugumon.model;
 
-public class BaseDataInfo {
+public final class BaseDataInfo {
 	private BaseDataInfo() {}
 	private Long totalUser;
 	private Long totalEnquete;
 	private Long totalAnswer;
-	public static class Builder {
+	public Long getTotalUser() {
+		return totalUser;
+	}
+	public Long getTotalEnquete() {
+		return totalEnquete;
+	}
+	public Long getTotalAnswer() {
+		return totalAnswer;
+	}
+	public static final class Builder {
 		Long totalUser;
 		Long totalEnquete;
 		Long totalAnswer;
@@ -28,15 +37,6 @@ public class BaseDataInfo {
 			ins.totalAnswer = this.totalAnswer;
 			return ins;
 		}
-	}
-	public Long getTotalUser() {
-		return totalUser;
-	}
-	public Long getTotalEnquete() {
-		return totalEnquete;
-	}
-	public Long getTotalAnswer() {
-		return totalAnswer;
 	}
 	
 }

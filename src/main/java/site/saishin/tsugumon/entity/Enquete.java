@@ -26,30 +26,23 @@ public class Enquete implements Serializable {
 	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     public Long id;
+    public Long user_id;
     public String description;
     public Integer language_id;
     public Integer total = 0;
     public Timestamp created;
-    public Long user_id;
-    public Long client_id;
+    
     @Override
     public int hashCode() {
-        int hash = 0;
-        hash += (id != null ? id.hashCode() : 0);
-        return hash;
+        return id.hashCode();
     }
 
     @Override
-    public boolean equals(Object object) {
-        // TODO: Warning - this method won't work in the case the id fields are not set
-        if (!(object instanceof Enquete)) {
-            return false;
-        }
-        Enquete other = (Enquete) object;
-        if ((this.id == null && other.id != null) || (this.id != null && !this.id.equals(other.id))) {
-            return false;
-        }
-        return true;
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Enquete)) return false;
+        Enquete o = (Enquete) obj;
+        if (id != null && o.id == id) return true;
+        return super.equals(obj);
     }
 
     @Override

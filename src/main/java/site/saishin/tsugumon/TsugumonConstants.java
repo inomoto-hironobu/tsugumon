@@ -2,6 +2,7 @@ package site.saishin.tsugumon;
 
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.bind.annotation.XmlRootElement;
 
 public final class TsugumonConstants {
 	private TsugumonConstants() {}
@@ -31,7 +32,10 @@ public final class TsugumonConstants {
 	public static final Response CREATED_RESPONSE = Response.status(Status.CREATED).build();
 	public static final Response BAD_REQUEST_RESPONSE = Response.status(Status.BAD_REQUEST).build();
 	public static final Response NOT_FOUND_RESPONSE = Response.status(Status.NOT_FOUND).build();
-	public static final Response FORBIDDEN_RESPONSE = Response.status(Status.FORBIDDEN).build();
+	/**
+	 * @see Forbidden
+	 */
+	public static final Response FORBIDDEN_RESPONSE = Response.status(Status.FORBIDDEN).entity(Forbidden.getInstance()).build();
 	public static final Response SERVER_ERROR_RESPONSE = Response.status(Status.INTERNAL_SERVER_ERROR).build();
 	public static final Response CONFLICT_RESPONSE = Response.status(Status.CONFLICT).build();
 
@@ -40,4 +44,16 @@ public final class TsugumonConstants {
 	public static final String MEMCACHE_CLIENT = "MEMCACHE_CLIENT";
 	public static final String DATA_ACCESSOR_NAME = "DATA_ACCESSOR";
 	public static final String ACCESS_USERS = "";
+	
+	@XmlRootElement
+	static final class Forbidden {
+		private static final Forbidden instance = new Forbidden();
+		private Forbidden() {}
+		public static Forbidden getInstance() {
+			return instance;
+		}
+		public String getContent() {
+			return "アクセスマネージャーから拒否されました。";
+		}
+	} 
 }

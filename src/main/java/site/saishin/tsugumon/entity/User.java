@@ -17,13 +17,24 @@ import javax.persistence.Table;
 })
 public class User implements Serializable {
 	public static final String BY_ADDR = "User.byAddr";
-	public User(String addr) {
-		this.ipAddress = addr;
-	}
-	public User() {}
 	private static final long serialVersionUID = 4537522107715911711L;
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	public Long id;
 	public String ipAddress;
+	public User(String addr) {
+		this.ipAddress = addr;
+	}
+	public User() {}
+	@Override
+	public int hashCode() {
+		return id.hashCode();
+	}
+	@Override
+	public boolean equals(Object obj) {
+		if(!(obj instanceof User)) return false;
+		User o = (User) obj;
+		if(id != null && o.id == id) return true;
+		return super.equals(obj);
+	}
 }

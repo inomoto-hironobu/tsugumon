@@ -1,4 +1,4 @@
-package site.saishin.tsugumon.util;
+package site.saishin.tsugumon;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.junit.Assert.*;
@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import site.saishin.tsugumon.util.AccessManager;
 import site.saishin.tsugumon.util.AccessManager.Strategy;
 
 public class AccessManagerTest {

@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import javax.persistence.EntityManager;
+import javax.persistence.Persistence;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 
@@ -19,12 +21,13 @@ import org.slf4j.bridge.SLF4JBridgeHandler;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Provides;
 
 import net.spy.memcached.MemcachedClient;
 import site.saishin.tsugumon.TsugumonConstants;
+import site.saishin.tsugumon.model.BaseDataInfo;
+import site.saishin.tsugumon.model.BaseDataInfo.Builder;
 import site.saishin.tsugumon.util.AccessManager;
-import site.saishin.tsugumon.util.BaseDataInfo;
-import site.saishin.tsugumon.util.BaseDataInfo.Builder;
 import site.saishin.tsugumon.util.Timer;
 
 public class TsugumonContextListener implements ServletContextListener {
@@ -37,6 +40,7 @@ public class TsugumonContextListener implements ServletContextListener {
 		SLF4JBridgeHandler.removeHandlersForRootLogger();
 		SLF4JBridgeHandler.install();
 	}	
+	@Override
 	public void contextInitialized(ServletContextEvent event) {
 		logger.info("inited");
 		try {
@@ -44,13 +48,6 @@ public class TsugumonContextListener implements ServletContextListener {
 		} catch (ClassNotFoundException e) {
 			logger.error(e.getMessage(), e);
 		}
-		Injector injector = Guice.createInjector(new AbstractModule() {
-
-			@Override
-			protected void configure() {
-				
-			}
-		});
 		MemcachedClient mclient = null;
 		try {
 			mclient = new MemcachedClient(new InetSocketAddress("127.0.0.1", 11211));
@@ -91,6 +88,7 @@ public class TsugumonContextListener implements ServletContextListener {
 		event.getServletContext().setAttribute(TsugumonConstants.ACCESS_MANAGER_NAME, accessManager);
 	}
 
+	@Override
 	public void contextDestroyed(ServletContextEvent event) {
 		shortCycleScheduler.shutdown();
 		middleCycleScheduler.shutdown();

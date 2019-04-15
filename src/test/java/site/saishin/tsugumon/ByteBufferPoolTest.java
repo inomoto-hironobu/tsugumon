@@ -1,4 +1,4 @@
-package site.saishin.tsugumon.util;
+package site.saishin.tsugumon;
 
 import static org.junit.Assert.fail;
 
@@ -11,6 +11,8 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import site.saishin.tsugumon.util.ByteBufferPoolFactory;
 
 public class ByteBufferPoolTest {
 

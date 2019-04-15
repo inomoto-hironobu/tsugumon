@@ -14,12 +14,11 @@ import javax.ws.rs.core.Response.Status;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import site.saishin.tsugumon.TsugumonConstants;
 import site.saishin.tsugumon.logic.TsugumonLogic;
 import site.saishin.tsugumon.model.EnqueteModel;
 
 /**
- * Servlet implementation class Enquete
+ * Enquete
  */
 public class EnqueteServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
@@ -34,23 +33,25 @@ public class EnqueteServlet extends HttpServlet {
 		super();
 		logger.info("EnqueteServlet constructed");
 	}
-
+	/**
+	 * @see HttpServlet#init(ServletConfig config)
+	 */
 	@Override
 	public void init(ServletConfig config) throws ServletException {
 		super.init(config);
 		logger.info("EnqueteServlete init");
-		logic = (TsugumonLogic) config.getServletContext().getAttribute(TsugumonConstants.LOGIC_NAME);
 	}
 
 	/**
 	 * @see HttpServlet#doGet(HttpServletRequest request, HttpServletResponse
 	 *      response)
 	 */
-	protected void doGet(HttpServletRequest request, HttpServletResponse response)
+	@Override
+	public void doGet(HttpServletRequest request, HttpServletResponse response)
 			throws ServletException, IOException {
 		try {
 			Long id = Long.parseLong(request.getParameter("id"));
-			Optional<EnqueteModel> ret = logic.getEnqueteWithResultAtTransaction(id, request.getRemoteAddr());
+			Optional<EnqueteModel> ret = logic.getEnqueteModel(id, request.getRemoteAddr());
 			if (ret.isPresent()) {
 				request.setAttribute("enquete", ret.get());
 				request.getRequestDispatcher("/WEB-INF/enquete.jsp").forward(request, response);
@@ -62,14 +63,4 @@ public class EnqueteServlet extends HttpServlet {
 			response.sendError(Status.NOT_FOUND.getStatusCode());
 		}
 	}
-
-	/**
-	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse
-	 *      response)
-	 */
-	protected void doPost(HttpServletRequest request, HttpServletResponse response)
-			throws ServletException, IOException {
-		doGet(request, response);
-	}
-
 }

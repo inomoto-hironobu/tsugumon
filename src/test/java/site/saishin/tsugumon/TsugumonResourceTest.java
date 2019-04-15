@@ -1,4 +1,4 @@
-package site.saishin.tsugumon.resource;
+package site.saishin.tsugumon;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -34,7 +34,6 @@ import com.google.inject.Injector;
 import com.google.inject.Provides;
 
 import net.spy.memcached.MemcachedClient;
-import site.saishin.tsugumon.ConstantsForTest;
 import site.saishin.tsugumon.dao.DbResource;
 import site.saishin.tsugumon.dao.setting.AppConfig;
 import site.saishin.tsugumon.logic.TsugumonLogic;
@@ -84,7 +83,7 @@ public class TsugumonResourceTest {
 	public void test() {
 
 		HttpServletRequest existreq = Mockito.mock(HttpServletRequest.class);
-		Mockito.when(existreq.getRemoteAddr()).thenReturn(ConstantsForTest.existIpAddr);
+		Mockito.when(existreq.getRemoteAddr()).thenReturn(Constants.existIpAddr);
 		
 		HttpServletRequest newreq = Mockito.mock(HttpServletRequest.class);
 		Mockito.when(newreq.getRemoteAddr()).thenReturn("127.0.0.1");

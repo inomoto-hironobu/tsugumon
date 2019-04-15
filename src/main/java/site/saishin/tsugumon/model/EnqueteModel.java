@@ -80,8 +80,8 @@ public class EnqueteModel implements Serializable {
     public Integer getQuantity(int num) {
     	return getEntry(num).getQuantity();
     }
-    public String getStringEscaped(int num) {
-    	return StringEscapeUtils.escapeXml10(getEntry(num).getString());
+    public String getContentEscaped(int num) {
+    	return StringEscapeUtils.escapeXml10(getEntry(num).getContent());
     }
     public EntryModel getEntry(int index) {
     	if(index < 0 && index >= entries.size()) return null;

@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<persistence version="2.1"
-	xmlns="http://xmlns.jcp.org/xml/ns/persistence"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/persistence http://xmlns.jcp.org/xml/ns/persistence/persistence_2_1.xsd">
+<persistence version="2.1" xmlns="http://xmlns.jcp.org/xml/ns/persistence">
 	<persistence-unit name="tsugumon"
 		transaction-type="JTA">
 		<class>site.saishin.tsugumon.entity.Answer</class>
-		<class>site.saishin.tsugumon.entity.Client</class>
 		<class>site.saishin.tsugumon.entity.DealtEnquete</class>
 		<class>site.saishin.tsugumon.entity.Enquete</class>
 		<class>site.saishin.tsugumon.entity.Entry</class>
@@ -14,13 +10,23 @@
 		<class>site.saishin.tsugumon.entity.User</class>
 		<exclude-unlisted-classes>false</exclude-unlisted-classes>
 	</persistence-unit>
-	<persistence-unit name="test" transaction-type="RESOURCE_LOCAL">
+	<persistence-unit name="test"
+		transaction-type="RESOURCE_LOCAL">
+		<class>site.saishin.tsugumon.entity.Answer</class>
+		<class>site.saishin.tsugumon.entity.DealtEnquete</class>
+		<class>site.saishin.tsugumon.entity.Enquete</class>
+		<class>site.saishin.tsugumon.entity.Entry</class>
+		<class>site.saishin.tsugumon.entity.Language</class>
+		<class>site.saishin.tsugumon.entity.User</class>
 		<exclude-unlisted-classes>false</exclude-unlisted-classes>
-		 <properties>
-			<property name="javax.persistence.jdbc.driver" value="org.apache.derby.jdbc.EmbeddedDriver" />
-			<property name="javax.persistence.jdbc.url" value="jdbc:derby:mydb;create=true" />
+		<properties>
+			<property name="javax.persistence.jdbc.driver"
+				value="org.apache.derby.jdbc.EmbeddedDriver" />
+			<property name="javax.persistence.jdbc.url"
+				value="jdbc:derby:mydb;create=true" />
 			<property name="javax.persistence.jdbc.user" value="root" />
-			<property name="javax.persistence.jdbc.password" value="rootpw" />
-		 </properties>
+			<property name="javax.persistence.jdbc.password"
+				value="rootpw" />
+		</properties>
 	</persistence-unit>
 </persistence>
