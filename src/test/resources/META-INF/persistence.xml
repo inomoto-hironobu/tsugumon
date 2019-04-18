@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<persistence version="2.2" xmlns="http://xmlns.jcp.org/xml/ns/persistence">
+	<persistence-unit name="test"
+		transaction-type="RESOURCE_LOCAL">
+		<provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+		<class>site.saishin.tsugumon.entity.Answer</class>
+		<class>site.saishin.tsugumon.entity.Enquete</class>
+		<class>site.saishin.tsugumon.entity.Entry</class>
+		<class>site.saishin.tsugumon.entity.Language</class>
+		<class>site.saishin.tsugumon.entity.User</class>
+		<exclude-unlisted-classes>false</exclude-unlisted-classes>
+		<properties>
+			<property name="javax.persistence.jdbc.driver"
+				value="org.apache.derby.jdbc.EmbeddedDriver" />
+			<property name="javax.persistence.jdbc.url"
+				value="jdbc:derby:mydb" />
+			<property name="javax.persistence.jdbc.user" value="root" />
+			<property name="javax.persistence.jdbc.password"
+				value="root" />
+		</properties>
+	</persistence-unit>
+</persistence>

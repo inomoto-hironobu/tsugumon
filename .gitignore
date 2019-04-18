@@ -1,5 +1,4 @@
 target/
-.metadata/
 .settings/
-/.apt_generated/
-*~
+mydb/
+derby.log

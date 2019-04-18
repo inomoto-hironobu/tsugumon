@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -17,55 +18,45 @@ import site.saishin.tsugumon.entity.Enquete;
 public class EnqueteModel implements Serializable {
 	
 	private static final long serialVersionUID = 8906836091614451462L;
-
-	public EnqueteModel(Enquete enquete) {
-		this.id = enquete.id;
-		this.description = enquete.description;
-		this.total = enquete.total;
-		this.created = enquete.created;
-		this.language_id = enquete.language_id;
-	}
-	public EnqueteModel() {}
     private Long id;
+	private LanguageModel language;
 	private String description;
     private List<EntryModel> entries = new ArrayList<>();
     private Integer total;
 	private Timestamp created;
+
+	public EnqueteModel(Enquete enquete) {
+		this.id = enquete.id;
+		this.description = enquete.description;
+		this.entries = enquete.entries
+				.stream()
+				.map(e -> {
+					return new EntryModel(e);
+				})
+				.collect(Collectors.toList());
+		this.created = enquete.created;
+		this.language = new LanguageModel(enquete.language);
+	}
+	public EnqueteModel() {}
+	
 	public Long getId() {
 		return id;
 	}
-	public void setId(Long id) {
-		this.id = id;
+	public LanguageModel getLanguage() {
+		return language;
 	}
 	public String getDescription() {
 		return description;
 	}
-	public void setDescription(String description) {
-		this.description = description;
-	}
 	public List<EntryModel> getEntries() {
 		return entries;
-	}
-	public void setEntries(List<EntryModel> entries) {
-		this.entries = entries;
 	}
 	public Timestamp getCreated() {
 		return created;
 	}
-	public void setCreated(Timestamp created) {
-		this.created = created;
-	}
-	public Integer getLanguage_id() {
-		return language_id;
-	}
-	public void setLanguage_id(Integer language_id) {
-		this.language_id = language_id;
-	}
 	public void setTotal(Integer total) {
 		this.total = total;
 	}
-	private Integer language_id;
-
 	public Integer getTotal() {
 		if(total == null) {
 			return 0;
@@ -90,8 +81,5 @@ public class EnqueteModel implements Serializable {
     @XmlAttribute
     public String getTitle() {
     	return StringEscapeUtils.escapeXml10(description.substring(0, description.length() < 20 ? description.length() : 20));
-    }
-    public EnqueteModel cloneNoCount() {
-    	return null;
     }
 }

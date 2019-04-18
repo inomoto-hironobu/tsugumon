@@ -1,5 +1,7 @@
 package site.saishin.tsugumon;
 
+import java.util.Optional;
+
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 import javax.xml.bind.annotation.XmlRootElement;
@@ -8,6 +10,7 @@ public final class TsugumonConstants {
 	private TsugumonConstants() {}
 	
 	public static final String ACCESS_MANAGER_NAME = "access_manager";
+	
 	public static final int MAX_SELECT_ANSWER_SIZE = 10;
 	public static final int MAX_DESCRIPTION_SIZE = 500;
 	public static final int MAX_ENTRY_STRING_SIZE = 50;
@@ -39,7 +42,10 @@ public final class TsugumonConstants {
 	public static final Response SERVER_ERROR_RESPONSE = Response.status(Status.INTERNAL_SERVER_ERROR).build();
 	public static final Response CONFLICT_RESPONSE = Response.status(Status.CONFLICT).build();
 
-	public static final String BASE_DATA_INFO_NAME = "basedatainfo";
+	public static final Optional<Response> NOT_FOUND_RESPONSE_OPTION = Optional.of(NOT_FOUND_RESPONSE);
+	
+	public static final String BASE_DATA_INFO = "basedatainfo";
+	public static final String PROXIES_NAME = "proxys";
 	public static final String LOGIC_NAME = "ENQUETE_RESOURCE";
 	public static final String MEMCACHE_CLIENT = "MEMCACHE_CLIENT";
 	public static final String DATA_ACCESSOR_NAME = "DATA_ACCESSOR";

@@ -4,25 +4,22 @@ import java.sql.Timestamp;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import site.saishin.tsugumon.entity.Entry;
+import site.saishin.tsugumon.entity.Answer;
 
 
 @XmlRootElement
 public class AnswerModel {
-	private EnqueteModel enquete;
-	private Entry entry;
+	private EntryModel entry;
 	private Timestamp created;
-	public EnqueteModel getEnquete() {
-		return enquete;
+	public AnswerModel(Answer answer) {
+		this.entry = new EntryModel(answer.entry);
+		this.created = answer.created;
 	}
-	public void setEnquete(EnqueteModel enquete) {
-		this.enquete = enquete;
-	}
-	public Entry getEntry() {
+	public EntryModel getEntry() {
 		return entry;
 	}
-	public void setEntry(Entry entry2) {
-		this.entry = entry2;
+	public void setEntry(EntryModel entry) {
+		this.entry = entry;
 	}
 	public Timestamp getCreated() {
 		return created;

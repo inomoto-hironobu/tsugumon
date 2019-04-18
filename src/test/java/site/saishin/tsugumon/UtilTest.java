@@ -13,7 +13,7 @@ public class UtilTest {
 	//@Test
 	public void test() throws Exception {
 		ServletRequest req = null;
-		String actual = Util.tranformForBase64From(req);
+		String actual = TsugumonUtil.tranformForBase64From(req);
 		String base64 = null;
 		try {
 			byte[] addr;

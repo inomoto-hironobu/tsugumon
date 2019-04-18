@@ -1,44 +1,29 @@
 package site.saishin.tsugumon.model;
 
-import javax.xml.bind.annotation.XmlRootElement;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import site.saishin.tsugumon.entity.User;
 
-@XmlRootElement
+
 public class UserModel {
 	private String ipAddress;
-	private Integer accessed;
-	private Boolean available;
-	
-	public UserModel(User user, boolean available, int accessed) {
+	private EnqueteModel ownEnquete;
+	private List<AnswerModel> answers;
+	public UserModel(User user) {
 		this.ipAddress = user.ipAddress;
-		this.accessed = accessed;
-		this.available = available;
+		this.ownEnquete = new EnqueteModel(user.enquete);
+		this.answers = user.answers.stream().map((answer) -> {
+			return new AnswerModel(answer);
+		}).collect(Collectors.toList());
 	}
-
-	public UserModel() {}
-
 	public String getIpAddress() {
 		return ipAddress;
 	}
-
-	public void setIpAddress(String ipAddress) {
-		this.ipAddress = ipAddress;
+	public EnqueteModel getOwnEnquete() {
+		return ownEnquete;
 	}
-
-	public Integer getAccessed() {
-		return accessed;
-	}
-
-	public void setAccessed(Integer accessed) {
-		this.accessed = accessed;
-	}
-
-	public Boolean getAvailable() {
-		return available;
-	}
-
-	public void setAvailable(Boolean available) {
-		this.available = available;
+	public List<AnswerModel> getAnswers() {
+		return answers;
 	}
 }

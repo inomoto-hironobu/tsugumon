@@ -34,13 +34,11 @@ import com.google.inject.Injector;
 import com.google.inject.Provides;
 
 import net.spy.memcached.MemcachedClient;
-import site.saishin.tsugumon.dao.DbResource;
-import site.saishin.tsugumon.dao.setting.AppConfig;
 import site.saishin.tsugumon.logic.TsugumonLogic;
 import site.saishin.tsugumon.model.EnqueteModel;
-import site.saishin.tsugumon.model.HomeModel;
-import site.saishin.tsugumon.model.Message;
 import site.saishin.tsugumon.model.UserModel;
+import site.saishin.tsugumon.model.Message;
+import site.saishin.tsugumon.model.AttributeModel;
 import site.saishin.tsugumon.resources.TsugumonResource;
 import site.saishin.tsugumon.util.AccessManager;
 
@@ -88,21 +86,15 @@ public class TsugumonResourceTest {
 		HttpServletRequest newreq = Mockito.mock(HttpServletRequest.class);
 		Mockito.when(newreq.getRemoteAddr()).thenReturn("127.0.0.1");
 		
-		Response resp = tsugumonResource.getHome(existreq);
+		Response resp = tsugumonResource.getUser(existreq);
 		assertThat(resp.getStatus(), is(Response.Status.OK.getStatusCode()));
 		Object entity = resp.getEntity();
-		if(entity instanceof HomeModel) {
-			HomeModel existres = (HomeModel) resp.getEntity(); 
+		if(entity instanceof UserModel) {
+			UserModel existres = (UserModel) resp.getEntity(); 
 			assertThat(existres.getOwnEnquete().getId(), is(1L));
 		} else {
 			fail();
 		}
-		
-		resp = tsugumonResource.getDealtEnquete(existreq);
-		assertThat(resp.getStatus(), is(Response.Status.OK.getStatusCode()));
-		
-		resp = tsugumonResource.getRanking(existreq, 0);
-		assertThat(resp.getStatus(), notNullValue());
 		entity = resp.getEntity();
 		if(entity instanceof List) {
 			@SuppressWarnings("unchecked")

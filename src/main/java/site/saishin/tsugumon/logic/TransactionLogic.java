@@ -3,18 +3,17 @@ package site.saishin.tsugumon.logic;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
-import java.sql.Timestamp;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.function.BiFunction;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityTransaction;
 import javax.persistence.PersistenceContext;
+import javax.persistence.Query;
 import javax.persistence.TypedQuery;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -22,138 +21,77 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import net.spy.memcached.MemcachedClient;
 import site.saishin.tsugumon.TsugumonConstants;
 import site.saishin.tsugumon.entity.Answer;
 import site.saishin.tsugumon.entity.Enquete;
 import site.saishin.tsugumon.entity.Entry;
+import site.saishin.tsugumon.entity.Language;
 import site.saishin.tsugumon.entity.User;
 import site.saishin.tsugumon.model.EnqueteModel;
+import site.saishin.tsugumon.model.UserModel;
 
 public final class TransactionLogic {
 	private static final Logger logger = LoggerFactory.getLogger(TransactionLogic.class);
 	@PersistenceContext
 	EntityManager em;
-	private MemcachedClient mclient;
 	ObjectMapper mapper = new ObjectMapper();
 	TsugumonLogic logic;
 
 	public Optional<Response> createUser(String addr) {
-		EntityTransaction transaction = em.getTransaction();
-		transaction.begin();
-		User user = new User(addr);
-		em.persist(user);
-		transaction.commit();
-		return Optional.of(null);
+		em.getTransaction().begin();
+		if(logic.getUserByIpAddress(addr).isEmpty()) {
+			User user = new User(addr);
+			em.persist(user);
+			em.getTransaction().commit();
+			return Optional.of(Response.status(Status.CREATED).entity(new UserModel(user)).build());
+		}
+		em.getTransaction().rollback();
+		return Optional.of(TsugumonConstants.CONFLICT_RESPONSE);
 	}
 	public Optional<Response> createEnquete(String addr, ByteBuffer buffer) {
-		EntityTransaction transaction = em.getTransaction();
-		transaction.begin();
-		
-		EnqueteModel enqueteModel;
-		try {
-			enqueteModel = mapper.readValue(Charset.forName("UTF-8").decode(buffer).toString(), EnqueteModel.class);
-			logger.debug("" + enqueteModel.getEntries());
-			// e1e2は必須
-			if (enqueteModel == null || StringUtils.isEmpty(enqueteModel.getDescription())
-					|| enqueteModel.getEntries().size() < 2 || StringUtils.isEmpty(enqueteModel.getEntry(0).getString())
-					|| StringUtils.isEmpty(enqueteModel.getEntry(1).getContent())) {
-				logger.debug("不正な値");
-				return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
-			} else {
-				User user = logic.getUserByIpAddress(addr);
-				logger.debug(user.ipAddress + "; own:" + user.id);
-				//
-				Enquete enquete = new Enquete();
-				enquete.description = enqueteModel.getDescription();
-				enquete.user_id = user.id;
-				enquete.language_id = 1;
-				em.persist(enquete);
-				Enquete newEnquete = em.find(Enquete.class, enquete.user_id);
-				List<Entry> entries = enqueteModel.getEntries().stream().map((e) -> {
-					Entry entry = new Entry();
-					entry.number = e.getNumber();
-					entry.content = e.getContent();
-					entry.enquete_id = newEnquete.id;
-					return entry;
-				}).collect(Collectors.toList());
-				//
-
-				for (Entry entry : entries) {
-					em.persist(entry);
-				}
-				//
-				mclient.set("enquete" + enquete.id, TsugumonConstants.MIDDLE_EXPIRATION, newEnquete);
-				mclient.set("total/" + enquete.id, TsugumonConstants.MIDDLE_EXPIRATION, 0);
-				return Optional.empty();
-			}
-			transaction.commit();
-		} catch (IOException e) {
-			logger.debug(e.getLocalizedMessage());
-			transaction.rollback();
-			return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
-		}
-	}
-
-	public Optional<Response> createAnswer() {
-		return Optional.empty();
-	}
-	public Optional<Response> changeAnswer(String addr, long enqueteId, int entry) {
-		logger.debug("user ipaddr:{}; id:{} {}", addr, enqueteId, entry);
-		// アンケートが存在するか確認する
-		Optional<Enquete> enqueteOptional = logic.getEnqueteById(enqueteId);
-		if (enqueteOptional.isPresent()) {
-			Optional<Entry> entopt = logic
-					.getEntries(enqueteOptional.get())
-					.stream()
-					.filter(e -> e.number == entry)
-					.findAny();
-			//エントリーが存在するか確認する
-			if(entopt.isPresent()) {
-				Entry e = entopt.get();
-				boolean good = logic
-				.getAnswers(addr)
-				.stream()
-				.anyMatch(a -> a.entry_id == e.id);
-				if(good) {
-					
-				}
-				if (size <= TsugumonConstants.MAX_SELECT_ANSWER_SIZE + 1 && o.isPresent()) {
-					// 既存のアンケートの選択を変える場合
-					Answer answer = o.get();
-					Long oldEntry = answer.entry_id;
-					answer.entry_id = entry;
-					em.persist(answer);
-					return Optional.empty();
-				} else if (size < TsugumonConstants.MAX_SELECT_ANSWER_SIZE + 1) {
-					//
-					Answer answer = new Answer();
-					answer.entry_id= e.id;
-					answer.user_id = addr.id;
-					answer.created = new Timestamp(System.currentTimeMillis());
-					em.persist(answer);
-					Enquete enquete = em.find(Enquete.class, answer.enquete_id);
-					System.out.println(enquete + " " + answer.enquete_id);
-					if (enquete.total == null) {
-						enquete.total = 0;
-					} else {
-						enquete.total += 1;
-					}
-					em.persist(enquete);
-					answers.add(answer);
-					return Optional.empty();
-
-				} else if (size >= TsugumonConstants.MAX_SELECT_ANSWER_SIZE + 1) {
-					//
-					return Optional.of(TsugumonConstants.CONFLICT_RESPONSE);
+		return ifUser(addr, (user, tx) -> {
+			logger.debug(user.ipAddress + "; own:" + user.id);
+			try {
+				EnqueteModel enqueteModel = mapper.readValue(Charset.forName("UTF-8").decode(buffer).toString(), EnqueteModel.class);
+				logger.debug("" + enqueteModel.getEntries());
+				// e1e2は必須
+				if (enqueteModel == null
+						|| enqueteModel.getLanguage() == null
+						|| enqueteModel.getLanguage().getId() == null
+						|| StringUtils.isEmpty(enqueteModel.getDescription())
+						|| enqueteModel.getEntries() == null
+						|| enqueteModel.getEntries().size() < 2
+						|| StringUtils.isEmpty(enqueteModel.getEntry(0).getContent())
+						|| StringUtils.isEmpty(enqueteModel.getEntry(1).getContent())) {
+					logger.debug("不正な値");
+					tx.rollback();
+					return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
 				} else {
-					logger.error("条件に漏れがある");
-					return Optional.of(TsugumonConstants.SERVER_ERROR_RESPONSE);
+					//正常な値
+					Enquete enquete = new Enquete();
+					enquete.user = user;
+					enquete.description = enqueteModel.getDescription();
+					enquete.language = em.find(Language.class, enqueteModel.getLanguage().getId());
+					enquete.entries = new ArrayList<>();
+					enqueteModel.getEntries().forEach(em -> {
+						Entry entry = new Entry();
+						entry.content = em.getContent();
+						entry.enquete = enquete;					
+						entry.number = em.getNumber();
+						enquete.entries.add(entry);
+					});
+					em.persist(enquete);
+					tx.commit();
+					//
+					return Optional.empty();
 				}
+			} catch (IOException e) {
+				logger.debug(e.getLocalizedMessage());
+				tx.rollback();
+				return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
 			}
-		} else {
-			return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
-		}
+		});
+		
 	}
 
 	/**
@@ -161,69 +99,132 @@ public final class TransactionLogic {
 	 * @return ステータス アンケートが存在しなければ404 うまくいけば空
 	 */
 	public Optional<Response> deleteEnquete(String addr) {
-		EntityTransaction transaction = em.getTransaction();
-		transaction.begin();
-		Optional<Enquete> ret = getEnqueteByUser(user);
-		if (ret.isPresent()) {
-			Enquete enquete = ret.get();
-			TypedQuery<Answer> q = em.createNamedQuery("", Answer.class);
-			q.setParameter("", enquete.id);
-			q.executeUpdate();
-			mclient.delete("enquete/" + enquete.id);
-			TypedQuery<Enquete> q2 = em.createNamedQuery("", Enquete.class);
-			q2.setParameter("id", enquete.id);
-			transaction.commit();
-			return Optional.empty();
-		} else {
-			transaction.rollback();
-			return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
-		}
+		return ifUser(addr, (user, tx) -> {
+			Optional<Enquete> enqopt = logic.getEnqueteByUser(user);
+			if(enqopt.isPresent()) {
+				Query q = em.createNamedQuery(Enquete.DEL_BY_USER);
+				q.setParameter("user", user);
+				q.executeUpdate();
+				tx.commit();
+				return Optional.empty();
+			} else {
+				tx.rollback();
+				return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+			}
+		});
+	}
+	public Optional<Response> createAnswer(String addr, Long enqueteId, Integer entryNum) {
+		return ifUser(addr, (user, tx) -> {
+			if(user.answers.size() > TsugumonConstants.MAX_SELECT_ANSWER_SIZE) {
+				return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
+			}
+			// アンケートが存在するか確認する
+			Optional<Enquete> optEnq = logic.getEnqueteById(enqueteId);
+			if(optEnq.isPresent()) {
+				//すでにそのアンケートに答えているか調べる
+				Optional<Answer> optAns = user
+						.answers
+						.stream()
+						.filter(a -> {
+							return a.entry.enquete.id.equals(enqueteId);
+						})
+						.findAny();
+				if(optAns.isPresent()) {
+					return Optional.of(TsugumonConstants.CONFLICT_RESPONSE);
+				} else {
+					//指定されたEntryがあるか調べる
+					Optional<Entry> optEnt = optEnq
+							.get()
+							.entries
+							.stream()
+							.filter(e -> e.number.equals(entryNum))
+							.findAny();
+					if(optEnt.isPresent()) {
+						Answer answer = new Answer();
+						answer.user = user;
+						answer.entry = optEnt.get();
+						em.persist(answer);
+						tx.commit();
+						return Optional.empty();
+					}
+				}
+			}
+			return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+		});
+	}
+	public Optional<Response> changeAnswer(String addr, long enqueteId, int entryNum) {
+		logger.debug("user ipaddr:{}; id:{} {}", addr, enqueteId, entryNum);
+		return ifUser(addr, (user, tx) -> {
+			// アンケートが存在するか確認する
+			Optional<Enquete> optEnq = logic.getEnqueteById(enqueteId);
+			if (optEnq.isPresent()) {
+				Optional<Entry> optEnt = logic
+						.getEntries(optEnq.get())
+						.stream()
+						.filter(e -> e.number == entryNum)
+						.findAny();
+				//エントリーが存在するか確認する
+				if(optEnt.isPresent()) {
+					Entry e = optEnt.get();
+					Optional<Answer> optAns = logic
+					.getAnswers(user)
+					.stream()
+					.filter(a -> {
+						return a.entry.equals(optEnt.get());
+					})
+					.findAny();
+					if(optAns.isPresent()) {
+						TypedQuery<Answer> q = em.createNamedQuery(Answer.CHANGE, Answer.class);
+						q.setParameter(1, e.id);
+						q.setParameter(2, optAns.get().id);
+						q.executeUpdate();
+						tx.commit();
+						return Optional.empty();
+					}
+				}
+			}
+			return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+		}); 
 	}
 
 	public Optional<Response> deleteAnswer(final String addr, final Long enqueteId) {
+		return ifUser(addr, (user, tx) -> {
+			Optional<Enquete> enqopt = logic.getEnqueteById(enqueteId);
+			if (enqopt.isEmpty()) {
+				return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
+			}
+			Optional<Answer> optans = user
+					.answers
+					.stream()
+					.filter(a -> {
+						return a.entry.enquete.id.equals(enqueteId);
+					})
+					.findAny();
+			if(optans.isPresent()) {
+				Query q = em.createNamedQuery(Answer.DEL_BY_ENQUETE);
+				q.setParameter("enquete", enqopt.get());
+				q.executeUpdate();
+				tx.commit();
+				return Optional.empty();
+			} else {
+				return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+			}
+		});
+		
+	}
+
+	/**
+	 * {@link EntityTransaction}を開始する
+	 * @param addr
+	 * @param func 正常なら空のOptionalをそうでなければ別のResponseを返すことを期待する
+	 * @return addrの{@link User}が存在するならfuncの返すOptionalを返す
+	 */
+	public Optional<Response> ifUser(String addr, BiFunction<User, EntityTransaction, Optional<Response>> func) {
 		EntityTransaction transaction = em.getTransaction();
 		transaction.begin();
-		Optional<Enquete> optionalEnqute = logic.getEnqueteById(enqueteId);
-		if (!optionalEnqute.isPresent()) {
-			return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
-		}
-		List<Answer> answers = getAnswers(user);
-		boolean removed = false;
-		// enqueteIdを持たないAnswerを取り出す。取り出す過程で持っているものはデータアクセスし、持っていなければ何もせず収集する
-		for (int i = 0; i < answers.size(); i++) {
-			if (answers.get(i).enquete_id.equals(enqueteId)) {
-				Answer answer = answers.get(i);
-				if (answerDao.delete(answer) != 1) {
-					System.out.println("error");
-				}
-				Enquete enquete = em.find(Enquete.class, answer.enquete_id);
-				if (enquete.total == null) {
-					enquete.total = 0;
-				} else {
-					enquete.total -= 1;
-				}
-				answers.remove(answer);
-				mclient.set("answers/" + enqueteId, TsugumonConstants.MIDDLE_EXPIRATION, answers);
-				removed = true;
-				break;
-			}
-		}
-		logger.debug("resource answers size:" + answers.size());
-		// サイズに変更があったかどうかで対応を変える
-		if (removed) {
-			transaction.commit();
-			return Optional.empty();
-		} else {
-			transaction.rollback();
-			logger.debug(answers.toString());
-			return Optional.of(TsugumonConstants.SERVER_ERROR_RESPONSE);
-		}
-	}
-	public Optional<Response> ifUser(String addr, Function<User, Optional<Response>> func) {
 		Optional<User> opt = logic.getUserByIpAddress(addr);
-		if(opt.isPresent()) {
-			User user = opt.get();
-			return func.apply(user);
+		if(opt.isEmpty()) {
+			return func.apply(opt.get(), transaction);
 		}
 		return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
 	}

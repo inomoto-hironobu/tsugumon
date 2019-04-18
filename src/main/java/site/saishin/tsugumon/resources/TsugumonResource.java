@@ -7,10 +7,9 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.function.Supplier;
-
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.persistence.EntityManager;
 import javax.persistence.Persistence;
@@ -41,11 +40,14 @@ import com.google.inject.Injector;
 import com.google.inject.Provides;
 
 import site.saishin.tsugumon.TsugumonConstants;
+import site.saishin.tsugumon.TsugumonUtil;
+import site.saishin.tsugumon.entity.Enquete;
+import site.saishin.tsugumon.entity.User;
 import site.saishin.tsugumon.logic.TransactionLogic;
 import site.saishin.tsugumon.logic.TsugumonLogic;
 import site.saishin.tsugumon.model.EnqueteModel;
-import site.saishin.tsugumon.model.HomeModel;
 import site.saishin.tsugumon.model.UserModel;
+import site.saishin.tsugumon.model.AttributeModel;
 import site.saishin.tsugumon.util.AccessManager;
 import site.saishin.tsugumon.util.AccessManager.Strategy;
 import site.saishin.tsugumon.util.ByteBufferPoolFactory;
@@ -62,6 +64,8 @@ public class TsugumonResource {
 	private TransactionLogic transactionLogic;
 	private AccessManager accessManager;
 	private Set<String> proxys;
+	@Inject
+	private Set<String> availableUsers;
 	private ObjectPool<ByteBuffer> bufferPool = new GenericObjectPool<>(new ByteBufferPoolFactory());
 
 	public TsugumonResource() {
@@ -76,7 +80,7 @@ public class TsugumonResource {
 
 			@Override
 			protected void configure() {
-				
+
 			}
 
 			@Provides
@@ -87,6 +91,7 @@ public class TsugumonResource {
 		logic = injector.getInstance(TsugumonLogic.class);
 		accessManager = (AccessManager) context.getAttribute(TsugumonConstants.ACCESS_MANAGER_NAME);
 		bufferPool.addObject();
+		proxys = (Set<String>) sconfig.getServletContext().getAttribute(TsugumonConstants.PROXIES_NAME);
 	}
 
 	@PreDestroy
@@ -95,32 +100,20 @@ public class TsugumonResource {
 	}
 
 	@GET
-	@Path("ipaddress")
-	@Produces(MediaType.TEXT_PLAIN)
-	public String ipaddress(@Context final HttpServletRequest req) {
-		return getAddr(req);
-	}
-
-	@GET
-	@Path("systeminfo")
+	@Path("attr")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response getSystemInfo(@Context final HttpServletRequest req) {
-		return accessOnManagement(req, Strategy.LONG, addr ->{
-			return Response.ok(sconfig.getServletContext().getAttribute(TsugumonConstants.BASE_DATA_INFO_NAME)).build();
-		});
-	}
-
-	@GET
-	@Path("dealtEnquete")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getDealtEnquete(@Context final HttpServletRequest req) {
+	public Response getAttribute(@Context final HttpServletRequest req) {
 		return accessOnManagement(req, Strategy.LONG, (addr) -> {
-			Optional<EnqueteModel> dealt = logic.getDealtEnqueteModel();
-			if (dealt.isPresent()) {
-				return Response.ok(dealt.get()).build();
+			AttributeModel attr = new AttributeModel();
+			attr.setIpAddress(addr);
+			Optional<User> user = logic.getUserByIpAddress(addr);
+			if (user.isPresent()) {
+				attr.setAvailable(checkAvailable(user.get()));
+				attr.setAccessed(1);
 			} else {
-				return TsugumonConstants.NOT_FOUND_RESPONSE;
+				attr.setAvailable(false);
 			}
+			return Response.ok(attr).build();
 		});
 	}
 
@@ -128,14 +121,15 @@ public class TsugumonResource {
 	@Path("user")
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getUser(@Context final HttpServletRequest req) {
-		return accessOnManagement(req, Strategy.LONG, (addr) -> {
-			Optional<UserModel> ret = logic.getUserModel(addr);
-			if (ret.isPresent()) {
-				UserModel model = ret.get();
-				model.getAvailable();
-				model.setAccessed(accessManager.count(req.getRemoteAddr()));
-				return Response.ok(model).build();
+		return accessOnManagement(req, Strategy.MIDDLE, (addr) -> {
+			Optional<User> userOpt = logic.getUserByIpAddress(addr);
+			if (userOpt.isPresent()) {
+				logger.debug("{}{}",userOpt.get().id, addr);
+				UserModel userModel = new UserModel(userOpt.get());
+				return Response.ok(userModel).build();
 			} else {
+				// データベースに登録されていない場合
+				logger.debug("user is null");
 				return TsugumonConstants.NOT_FOUND_RESPONSE;
 			}
 		});
@@ -146,26 +140,13 @@ public class TsugumonResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response getEnquete(@Context final HttpServletRequest req, @PathParam("id") final Long enqueteId) {
 		return accessOnManagement(req, Strategy.MIDDLE, addr -> {
-			Optional<EnqueteModel> emo = logic.getEnqueteModel(enqueteId, addr);
-			if (emo.isPresent()) {
-				return Response.ok(emo.get()).build();
+			Optional<Enquete> optEnquete = logic.getEnqueteById(enqueteId);
+			if (optEnquete.isPresent()) {
+				return Response.ok(new EnqueteModel(optEnquete.get())).build();
 			} else {
 				return TsugumonConstants.NOT_FOUND_RESPONSE;
 			}
-		}); 
-	}
-
-	@GET
-	@Path("home")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getHome(@Context final HttpServletRequest req) {
-		return accessOnManagement(req, Strategy.MIDDLE, (addr) -> {
-			return Response
-					.ok(logic.getHome(req.getRemoteAddr())
-					.orElseGet(() -> {
-						return new HomeModel();
-					})).build();
-			});
+		});
 	}
 
 	@GET
@@ -173,24 +154,12 @@ public class TsugumonResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response search(@Context final HttpServletRequest req, @PathParam("keyword") final String keyword,
 			@PathParam("page") final int page) {
-		return accessOnManagement(req, Strategy.MIDDLE, (addr)->{
+		return accessOnManagement(req, Strategy.MIDDLE, (addr) -> {
 			if (page < 0) {
 				return TsugumonConstants.FORBIDDEN_RESPONSE;
 			}
 			return Response.ok(logic.search(keyword, page)).build();
 		});
-	}
-
-	@GET
-	@Path("ranking/{page}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response getRanking(@Context final HttpServletRequest req, @PathParam("page") final int page) {
-		return accessOnManagement(req, Strategy.MIDDLE, (addr) -> {
-			if (page < 0) {
-				return TsugumonConstants.NOT_FOUND_RESPONSE;
-			}
-			return Response.ok(logic.getRank(page)).build();
-		}); 
 	}
 
 	@POST
@@ -236,7 +205,19 @@ public class TsugumonResource {
 	@PUT
 	@Path("answer")
 	@Produces(MediaType.APPLICATION_JSON)
-	public Response putAnswer(@Context final HttpServletRequest req, @FormParam("enqueteId") final long enqueteId,
+	public Response createAnswer(@Context final HttpServletRequest req, @FormParam("enqueteId") final long enqueteId,
+			@FormParam("entry") int entry) {
+		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
+			logger.debug("enquete:" + enqueteId + "; entry:" + entry);
+
+			return transactionLogic.changeAnswer(addr, enqueteId, entry).orElse(TsugumonConstants.OK_RESPONSE);
+		});
+	}
+
+	@PUT
+	@Path("answer")
+	@Produces(MediaType.APPLICATION_JSON)
+	public Response changeAnswer(@Context final HttpServletRequest req, @FormParam("enqueteId") final long enqueteId,
 			@FormParam("entry") int entry) {
 		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
 			logger.debug("enquete:" + enqueteId + "; entry:" + entry);
@@ -250,25 +231,31 @@ public class TsugumonResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response deleteAnswer(@Context final HttpServletRequest req, @PathParam("enqueteId") final Long enqueteId) {
 		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
-			return transactionLogic.deleteAnswer(addr, enqueteId)
-					.orElse(TsugumonConstants.OK_RESPONSE);
+			return transactionLogic.deleteAnswer(addr, enqueteId).orElse(TsugumonConstants.OK_RESPONSE);
 		});
 	}
 
 	private Response accessOnManagement(HttpServletRequest req, Strategy strategy, Function<String, Response> func) {
-		if (accessManager.access(getAddr(req), strategy)) {
-			return func.apply(getAddr(req));
+		String addr = TsugumonUtil.getAddr(req, proxys);
+		if (accessManager.access(addr, strategy)) {
+			return func.apply(addr);
 		} else {
 			return TsugumonConstants.FORBIDDEN_RESPONSE;
 		}
 	}
-	public String getAddr(HttpServletRequest req) {
-		String xff = req.getHeader("X-Forwarded-For");
-		if(xff != null) {
-			logger.info(xff);
-			proxys.add(req.getRemoteAddr());
-			return xff;
+	public boolean checkAvailable(User user) {
+		if (availableUsers.contains(user.ipAddress)) {
+			return true;
+		} else {
+			boolean available;
+			logger.debug(user.ipAddress + " id:" + user.id);
+			int count = logic.countAnswers(user);
+			//
+			available = count <= TsugumonConstants.MAX_SELECT_ANSWER_SIZE ;
+			if (available) {
+				availableUsers.add(user.ipAddress);
+			}
+			return available;
 		}
-		return req.getRemoteAddr();
 	}
 }
