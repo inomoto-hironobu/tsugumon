@@ -1,16 +1,10 @@
 package site.saishin.tsugumon;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.hamcrest.CoreMatchers.*;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
+
 import java.nio.charset.Charset;
 import java.util.HashSet;
 import java.util.List;
@@ -24,21 +18,15 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Rule;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Provides;
 
-import net.spy.memcached.MemcachedClient;
-import site.saishin.tsugumon.logic.TsugumonLogic;
 import site.saishin.tsugumon.model.EnqueteModel;
 import site.saishin.tsugumon.model.UserModel;
-import site.saishin.tsugumon.model.Message;
-import site.saishin.tsugumon.model.AttributeModel;
 import site.saishin.tsugumon.resources.TsugumonResource;
 import site.saishin.tsugumon.util.AccessManager;
 
@@ -80,11 +68,11 @@ public class TsugumonResourceTest {
 	@Test
 	public void test() {
 
-		HttpServletRequest existreq = Mockito.mock(HttpServletRequest.class);
-		Mockito.when(existreq.getRemoteAddr()).thenReturn(Constants.existIpAddr);
+		HttpServletRequest existreq = mock(HttpServletRequest.class);
+		when(existreq.getRemoteAddr()).thenReturn(Constants.existIpAddr);
 		
-		HttpServletRequest newreq = Mockito.mock(HttpServletRequest.class);
-		Mockito.when(newreq.getRemoteAddr()).thenReturn("127.0.0.1");
+		HttpServletRequest newreq = mock(HttpServletRequest.class);
+		when(newreq.getRemoteAddr()).thenReturn("127.0.0.1");
 		
 		Response resp = tsugumonResource.getUser(existreq);
 		assertThat(resp.getStatus(), is(Response.Status.OK.getStatusCode()));
@@ -123,7 +111,7 @@ public class TsugumonResourceTest {
 		assertThat(resp.getStatus(), is(Response.Status.BAD_REQUEST.getStatusCode()));
 		resp = tsugumonResource.deleteAnswer(existreq, 2L);
 		assertThat(resp.getStatus(), is(Response.Status.OK.getStatusCode()));
-		Mockito.when(existreq.getRemoteAddr()).thenReturn("192.168.10.5");
+		when(existreq.getRemoteAddr()).thenReturn("192.168.10.5");
 		assertFalse(tsugumonResource.deleteAnswer(existreq, 1L).getStatus() == Response.Status.OK.getStatusCode());
 
 

@@ -39,7 +39,7 @@ public final class TransactionLogic {
 
 	public Optional<Response> createUser(String addr) {
 		em.getTransaction().begin();
-		if(logic.getUserByIpAddress(addr).isEmpty()) {
+		if(!logic.getUserByIpAddress(addr).isPresent()) {
 			User user = new User(addr);
 			em.persist(user);
 			em.getTransaction().commit();
@@ -190,7 +190,7 @@ public final class TransactionLogic {
 	public Optional<Response> deleteAnswer(final String addr, final Long enqueteId) {
 		return ifUser(addr, (user, tx) -> {
 			Optional<Enquete> enqopt = logic.getEnqueteById(enqueteId);
-			if (enqopt.isEmpty()) {
+			if (!enqopt.isPresent()) {
 				return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
 			}
 			Optional<Answer> optans = user
@@ -223,7 +223,7 @@ public final class TransactionLogic {
 		EntityTransaction transaction = em.getTransaction();
 		transaction.begin();
 		Optional<User> opt = logic.getUserByIpAddress(addr);
-		if(opt.isEmpty()) {
+		if(!opt.isPresent()) {
 			return func.apply(opt.get(), transaction);
 		}
 		return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);

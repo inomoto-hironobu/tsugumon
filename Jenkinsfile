@@ -3,8 +3,13 @@ pipeline {
 	stages {
 		stage ('test') {
 			steps {
-			    sh 'mvn clean test-compile test'
+			    sh 'mvn clean test'
 		    }
+		}
+		stage ('analysis') {
+			step {
+			    sh 'mvn --batch-mode -V -U -e checkstyle:checkstyle pmd:pmd pmd:cpd findbugs:findbugs spotbugs:spotbugs'
+			}
 		}
 	}
 }
