@@ -37,18 +37,18 @@ public final class TransactionLogic {
 	ObjectMapper mapper = new ObjectMapper();
 	TsugumonLogic logic;
 
-	public Optional<Response> createUser(String addr) {
+	public Response createUser(String addr) {
 		em.getTransaction().begin();
 		if(!logic.getUserByIpAddress(addr).isPresent()) {
 			User user = new User(addr);
 			em.persist(user);
 			em.getTransaction().commit();
-			return Optional.of(Response.status(Status.CREATED).entity(new UserModel(user)).build());
+			return Response.status(Status.CREATED).entity(new UserModel(user)).build();
 		}
 		em.getTransaction().rollback();
-		return Optional.of(TsugumonConstants.CONFLICT_RESPONSE);
+		return TsugumonConstants.CONFLICT_RESPONSE;
 	}
-	public Optional<Response> createEnquete(String addr, ByteBuffer buffer) {
+	public Response createEnquete(String addr, ByteBuffer buffer) {
 		return ifUser(addr, (user, tx) -> {
 			logger.debug(user.ipAddress + "; own:" + user.id);
 			try {
@@ -65,7 +65,7 @@ public final class TransactionLogic {
 						|| StringUtils.isEmpty(enqueteModel.getEntry(1).getContent())) {
 					logger.debug("不正な値");
 					tx.rollback();
-					return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
+					return TsugumonConstants.FORBIDDEN_RESPONSE;
 				} else {
 					//正常な値
 					Enquete enquete = new Enquete();
@@ -83,12 +83,12 @@ public final class TransactionLogic {
 					em.persist(enquete);
 					tx.commit();
 					//
-					return Optional.empty();
+					return Response.ok().build();
 				}
 			} catch (IOException e) {
 				logger.debug(e.getLocalizedMessage());
 				tx.rollback();
-				return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
+				return TsugumonConstants.FORBIDDEN_RESPONSE;
 			}
 		});
 		
@@ -98,7 +98,7 @@ public final class TransactionLogic {
 	 * @param addr
 	 * @return ステータス アンケートが存在しなければ404 うまくいけば空
 	 */
-	public Optional<Response> deleteEnquete(String addr) {
+	public Response deleteEnquete(String addr) {
 		return ifUser(addr, (user, tx) -> {
 			Optional<Enquete> enqopt = logic.getEnqueteByUser(user);
 			if(enqopt.isPresent()) {
@@ -106,17 +106,17 @@ public final class TransactionLogic {
 				q.setParameter("user", user);
 				q.executeUpdate();
 				tx.commit();
-				return Optional.empty();
+				return Response.ok().build();
 			} else {
 				tx.rollback();
-				return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+				return TsugumonConstants.NOT_FOUND_RESPONSE;
 			}
 		});
 	}
-	public Optional<Response> createAnswer(String addr, Long enqueteId, Integer entryNum) {
+	public Response createAnswer(String addr, Long enqueteId, Integer entryNum) {
 		return ifUser(addr, (user, tx) -> {
 			if(user.answers.size() > TsugumonConstants.MAX_SELECT_ANSWER_SIZE) {
-				return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
+				return TsugumonConstants.FORBIDDEN_RESPONSE;
 			}
 			// アンケートが存在するか確認する
 			Optional<Enquete> optEnq = logic.getEnqueteById(enqueteId);
@@ -130,7 +130,7 @@ public final class TransactionLogic {
 						})
 						.findAny();
 				if(optAns.isPresent()) {
-					return Optional.of(TsugumonConstants.CONFLICT_RESPONSE);
+					return TsugumonConstants.CONFLICT_RESPONSE;
 				} else {
 					//指定されたEntryがあるか調べる
 					Optional<Entry> optEnt = optEnq
@@ -145,14 +145,14 @@ public final class TransactionLogic {
 						answer.entry = optEnt.get();
 						em.persist(answer);
 						tx.commit();
-						return Optional.empty();
+						return Response.ok().build();
 					}
 				}
 			}
-			return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+			return TsugumonConstants.NOT_FOUND_RESPONSE;
 		});
 	}
-	public Optional<Response> changeAnswer(String addr, long enqueteId, int entryNum) {
+	public Response changeAnswer(String addr, long enqueteId, int entryNum) {
 		logger.debug("user ipaddr:{}; id:{} {}", addr, enqueteId, entryNum);
 		return ifUser(addr, (user, tx) -> {
 			// アンケートが存在するか確認する
@@ -179,19 +179,19 @@ public final class TransactionLogic {
 						q.setParameter(2, optAns.get().id);
 						q.executeUpdate();
 						tx.commit();
-						return Optional.empty();
+						return Response.ok().build();
 					}
 				}
 			}
-			return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+			return TsugumonConstants.NOT_FOUND_RESPONSE;
 		}); 
 	}
 
-	public Optional<Response> deleteAnswer(final String addr, final Long enqueteId) {
+	public Response deleteAnswer(final String addr, final Long enqueteId) {
 		return ifUser(addr, (user, tx) -> {
 			Optional<Enquete> enqopt = logic.getEnqueteById(enqueteId);
 			if (!enqopt.isPresent()) {
-				return Optional.of(TsugumonConstants.NOT_FOUND_RESPONSE);
+				return TsugumonConstants.NOT_FOUND_RESPONSE;
 			}
 			Optional<Answer> optans = user
 					.answers
@@ -205,9 +205,9 @@ public final class TransactionLogic {
 				q.setParameter("enquete", enqopt.get());
 				q.executeUpdate();
 				tx.commit();
-				return Optional.empty();
+				return Response.ok().build();
 			} else {
-				return TsugumonConstants.NOT_FOUND_RESPONSE_OPTION;
+				return TsugumonConstants.NOT_FOUND_RESPONSE;
 			}
 		});
 		
@@ -219,13 +219,13 @@ public final class TransactionLogic {
 	 * @param func 正常なら空のOptionalをそうでなければ別のResponseを返すことを期待する
 	 * @return addrの{@link User}が存在するならfuncの返すOptionalを返す
 	 */
-	public Optional<Response> ifUser(String addr, BiFunction<User, EntityTransaction, Optional<Response>> func) {
+	public Response ifUser(String addr, BiFunction<User, EntityTransaction, Response> func) {
 		EntityTransaction transaction = em.getTransaction();
 		transaction.begin();
 		Optional<User> opt = logic.getUserByIpAddress(addr);
 		if(!opt.isPresent()) {
 			return func.apply(opt.get(), transaction);
 		}
-		return Optional.of(TsugumonConstants.FORBIDDEN_RESPONSE);
+		return TsugumonConstants.FORBIDDEN_RESPONSE;
 	}
 }

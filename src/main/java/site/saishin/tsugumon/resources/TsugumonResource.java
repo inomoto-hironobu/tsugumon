@@ -177,7 +177,7 @@ public class TsugumonResource {
 					return TsugumonConstants.BAD_REQUEST_RESPONSE;
 				}
 				bufferPool.returnObject(buffer);
-				return transactionLogic.createEnquete(addr, buffer).orElse(TsugumonConstants.OK_RESPONSE);
+				return transactionLogic.createEnquete(addr, buffer);
 			} catch (IOException | NoSuchElementException | IllegalStateException e) {
 				logger.error(e.getMessage(), e);
 				return TsugumonConstants.SERVER_ERROR_RESPONSE;
@@ -198,7 +198,7 @@ public class TsugumonResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response deleteEnquete(@Context final HttpServletRequest req) {
 		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
-			return transactionLogic.deleteEnquete(addr).orElse(TsugumonConstants.OK_RESPONSE);
+			return transactionLogic.deleteEnquete(addr);
 		});
 	}
 
@@ -210,7 +210,7 @@ public class TsugumonResource {
 		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
 			logger.debug("enquete:" + enqueteId + "; entry:" + entry);
 
-			return transactionLogic.changeAnswer(addr, enqueteId, entry).orElse(TsugumonConstants.OK_RESPONSE);
+			return transactionLogic.changeAnswer(addr, enqueteId, entry);
 		});
 	}
 
@@ -222,7 +222,7 @@ public class TsugumonResource {
 		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
 			logger.debug("enquete:" + enqueteId + "; entry:" + entry);
 
-			return transactionLogic.changeAnswer(addr, enqueteId, entry).orElse(TsugumonConstants.OK_RESPONSE);
+			return transactionLogic.changeAnswer(addr, enqueteId, entry);
 		});
 	}
 
@@ -231,7 +231,7 @@ public class TsugumonResource {
 	@Produces(MediaType.APPLICATION_JSON)
 	public Response deleteAnswer(@Context final HttpServletRequest req, @PathParam("enqueteId") final Long enqueteId) {
 		return accessOnManagement(req, Strategy.SHORT, (addr) -> {
-			return transactionLogic.deleteAnswer(addr, enqueteId).orElse(TsugumonConstants.OK_RESPONSE);
+			return transactionLogic.deleteAnswer(addr, enqueteId);
 		});
 	}
 

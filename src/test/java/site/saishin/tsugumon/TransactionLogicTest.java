@@ -51,12 +51,11 @@ public class TransactionLogicTest {
 	public void testTransaction() {
 		String addr = "127.0.0.1";
 		//
-		Optional<Response> ret = logic.deleteAnswer(addr, 100L);
-		assertThat(ret.isPresent(), is(true));
-		assertThat(ret.get().getStatus(), is(Status.NOT_FOUND.getStatusCode()));
+		Response ret = logic.deleteAnswer(addr, 100L);
+		assertThat(ret.getStatus(), is(Status.NOT_FOUND.getStatusCode()));
 		// 投票の削除
 		ret = logic.deleteAnswer(addr, 1L);
-		assertThat(ret.isPresent(), is(false));
+		assertThat(ret.getStatus(), is(Response.Status.OK.getStatusCode()));
 
 		//
 		logic.changeAnswer(addr, 1L, 1);
@@ -80,8 +79,7 @@ public class TransactionLogicTest {
 			ByteBuffer buffer = ByteBuffer.allocate(5000);
 			in.read(buffer.array());
 			ret = logic.createEnquete(addr, buffer);
-			assertThat(ret.isPresent(), is(true));
-			assertThat(ret.get().getStatus(), is(Status.CONFLICT.getStatusCode()));
+			assertThat(ret.getStatus(), is(Status.CONFLICT.getStatusCode()));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -107,7 +105,6 @@ public class TransactionLogicTest {
 			ByteBuffer buffer = ByteBuffer.allocate(5000);
 			in.read(buffer.array());
 			ret = logic.createEnquete(addr, buffer);
-			assertThat(ret.isPresent(), is(false));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
